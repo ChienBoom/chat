@@ -64,6 +64,7 @@ export class StreamingChatComponent implements OnInit, OnChanges {
   @Input() userchatbackgroundcolor = 'rgb(63, 81, 181)'; // Màu background của user
   @Input() botchattextcolor = 'rgb(48, 50, 53)'; // Màu text của Bot
   @Input() userchattextcolor = 'rgb(255, 255, 255)'; // Màu text của user
+  @Input() questionsuggests = 'hello - how can you help me';
   @Input() botgreeting = 'Hello! How can Aratech help you?'; // Lời chào của Bot
   @Input() placeholderinput = 'Type your question'; // placeholder của phần searchInput
   @Input() heightframe = '550px'; // Chiều cao khung chat(Tính theo px hoặc %)
@@ -88,6 +89,7 @@ export class StreamingChatComponent implements OnInit, OnChanges {
   isDisableSend = false; // disable button send
   isStopRequest = false; // dừng gửi request
   isCompleteRequest = true; // hoàn thành request
+  isShowSuggest = true;
   requestOrigin = 'https://langflow.hientd.vn';
   midurl = '/api/v1/run/';
   tweaks: any = {};
@@ -97,6 +99,7 @@ export class StreamingChatComponent implements OnInit, OnChanges {
   yPositionButtonValue = 14;
   xPositionFrameValue = 25;
   yPositionFrameValue = 79;
+  suggests: string[] = [];
 
   private subscription: Subscription | undefined;
   private subscriptionStream: Subscription | undefined;
@@ -109,22 +112,22 @@ export class StreamingChatComponent implements OnInit, OnChanges {
   ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes?.['ishiddenbutton']) {
-      const currentIsHiddentButton = changes?.['ishiddenbutton'].currentValue;
-      this.ishiddenbutton = currentIsHiddentButton === 'true' ? true : false;
-    }
-    if (changes?.['showchatfirst']) {
-      const currentshowChatFirst = changes?.['showchatfirst'].currentValue;
-      this.showchatfirst = currentshowChatFirst === 'true' ? true : false;
-    }
-    if (changes?.['isstream']) {
-      const currentIsStream = changes?.['isstream'].currentValue;
-      this.isstream = currentIsStream === 'true' ? true : false;
-    }
-    if (changes?.['isenablehistory']) {
-      const currentIsEnableHistory = changes?.['isenablehistory'].currentValue;
-      this.isenablehistory = currentIsEnableHistory === 'true' ? true : false;
-    }
+    // if (changes?.['ishiddenbutton']) {
+    //   const currentIsHiddentButton = changes?.['ishiddenbutton'].currentValue;
+    //   this.ishiddenbutton = currentIsHiddentButton === 'true' ? true : false;
+    // }
+    // if (changes?.['showchatfirst']) {
+    //   const currentshowChatFirst = changes?.['showchatfirst'].currentValue;
+    //   this.showchatfirst = currentshowChatFirst === 'true' ? true : false;
+    // }
+    // if (changes?.['isstream']) {
+    //   const currentIsStream = changes?.['isstream'].currentValue;
+    //   this.isstream = currentIsStream === 'true' ? true : false;
+    // }
+    // if (changes?.['isenablehistory']) {
+    //   const currentIsEnableHistory = changes?.['isenablehistory'].currentValue;
+    //   this.isenablehistory = currentIsEnableHistory === 'true' ? true : false;
+    // }
     if (changes?.['xposition']) {
       this.xPositionButtonValue = Number(changes?.['xposition'].currentValue);
       this.xPositionFrameValue = this.xPositionButtonValue + 5;
@@ -152,6 +155,7 @@ export class StreamingChatComponent implements OnInit, OnChanges {
           this.yPositionKey = 'bottom';
       }
     }
+    this.suggests = this.questionsuggests.split("-")
   }
 
   ngOnInit(): void {
@@ -162,21 +166,8 @@ export class StreamingChatComponent implements OnInit, OnChanges {
     }
     this.requestOrigin = this.originurlconfig;
     this.showChatFrame = this.showchatfirst;
-    if (this.chats.length === 0 && this.firstquestion.trim() != '') {
-      this.isStopRequest = false;
-      this.isRenderResponse = true;
-      this.isDisableSend = true;
-      this.isCompleteRequest = false;
-      this.chats.push({
-        question: this.firstquestion,
-        text: '',
-        responseLoading: true,
-      });
-      this.isAutoScroll = true;
-
-      setTimeout(() => this.scrollToBottom(), 0);
-      this.fetch(this.firstquestion);
-      this.requestString = '';
+    if (this.chats.length > 0) {
+      this.isShowSuggest = false;
     }
   }
 
@@ -212,26 +203,28 @@ export class StreamingChatComponent implements OnInit, OnChanges {
     }
     this.chats = [];
     if (this.isenablehistory) localStorage.removeItem('ChatHistory');
-    if (this.firstquestion.trim() != '') {
-      this.isStopRequest = false;
-      this.isRenderResponse = true;
-      this.isDisableSend = true;
-      this.isCompleteRequest = false;
-      this.chats.push({
-        question: this.firstquestion,
-        text: '',
-        responseLoading: true,
-      });
-      this.isAutoScroll = true;
+    this.isShowSuggest = true;
+  }
 
-      setTimeout(() => this.scrollToBottom(), 0);
-      this.fetch(this.firstquestion);
-      this.requestString = '';
-    }
+  handleClickSuggest(suggest: string) {
+    this.isShowSuggest = false;
+    this.isStopRequest = false;
+    this.isRenderResponse = true;
+    this.isDisableSend = true;
+    this.isCompleteRequest = false;
+    this.chats.push({
+      question: suggest,
+      text: '',
+      responseLoading: true,
+    });
+    this.isAutoScroll = true;
+
+    setTimeout(() => this.scrollToBottom(), 0);
+    this.fetch(suggest);
+    this.requestString = '';
   }
 
   hanldeSend() {
-    const test = this.chats;
     if (this.isDisableSend) {
       if (this.subscription) {
         this.subscription.unsubscribe();
@@ -247,6 +240,7 @@ export class StreamingChatComponent implements OnInit, OnChanges {
       }
       this.isDisableSend = false;
       this.isStopRequest = true;
+      if (this.chats.length == 0) this.isShowSuggest = true;
       return;
     }
     this.isStopRequest = false;

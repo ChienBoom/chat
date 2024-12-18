@@ -80,7 +80,8 @@
     </div>
     <div class="flex flex-col w-full h-full justify-start z-0">
       <div
-        class="overflow-y-scroll flex flex-col flex-grow min-w-full w-full px-3 pt-[70px] relative scrollable-container chatbot-chat-view scroll-smooth"
+        class="flex flex-col flex-grow min-w-full w-full px-3 pt-[70px] relative scrollable-container chatbot-chat-view scroll-smooth"
+        [ngClass]="{ 'overflow-y-scroll': !isShowSuggest }"
         (scroll)="handleScroll($event)"
         #chatMessages
       >
@@ -107,7 +108,7 @@
                 }"
                 style="border-radius: 6px; font-size: 16px"
               >
-                {{ botgreeting }}
+                <markdown [data]="botgreeting"> </markdown>
               </span>
             </div>
           </div>
@@ -200,6 +201,20 @@
             <div></div>
           </div>
         </div>
+      </div>
+      <div class="w-full flex flex-col px-5 pt-1" *ngIf="isShowSuggest">
+        <span
+          *ngFor="let suggest of suggests"
+          class="px-4 py-2 ml-2 mb-2 w-fit break-words chatbot-host-bubble prose"
+          [ngStyle]="{
+            background: botchatbackgroundcolor,
+            color: botchattextcolor
+          }"
+          style="border-radius: 20px; font-size: 16px"
+          (click)="handleClickSuggest(suggest)"
+        >
+          {{ suggest }}
+        </span>
       </div>
       <div class="w-full px-5 pt-2 pb-1">
         <div
