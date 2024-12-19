@@ -17,8 +17,6 @@
   z-index: 999;
   width: 48px;
   height: 48px;
-  // right: 20px;
-  // bottom: 14px;
   cursor: pointer;
 }
 
@@ -29,8 +27,6 @@
 
 .chat-frame {
   position: fixed;
-  // bottom: 78px;
-  // right: 27px;
   background-color: rgb(255, 255, 255);
   box-shadow: rgba(0, 0, 0, 0.16) 0px 5px 40px;
   transform-origin: right bottom;
@@ -103,9 +99,3 @@
     transform: translateY(-5px);
   }
 }
-
-ol {
-  list-style-type: decimal !important; /* Đảm bảo số thứ tự được hiển thị */
-  padding-left: 20px !important; /* Đặt lề trái cho danh sách */
-}
-

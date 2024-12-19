@@ -9,6 +9,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import {
   Component,
   ElementRef,
+  HostListener,
   Input,
   OnChanges,
   OnInit,
@@ -53,18 +54,16 @@ export class StreamingChatComponent implements OnInit, OnChanges {
   @Input() showchatfirst: boolean = false; //Mở chat khi khởi động ứng dụng
   @Input() isstream: boolean = true; //Sử dụng chế độ stream trong request
   @Input() isenablehistory: boolean = true; //Sử dụng lịch sử chat
-  @Input() firstquestion = 'how can you help me';
   @Input() chattitle = 'Aratech AI'; //Tiêu đề khung chat
   @Input() chatcolor = 'rgb(63, 81, 181)'; // Màu cho khung chat
   @Input() texttitlecolor = 'white'; // Màu cho title khung chat
   @Input() botimageurl = 'assets/images/logo/aratech-logo-picture.png'; // Đường dẫn ảnh cho Bot
-  @Input() userimageurl =
-    'https://raw.githubusercontent.com/zahidkhawaja/langchain-chat-nextjs/main/public/usericon.png'; // Đường dẫn ảnh cho User
+  @Input() userimageurl = 'assets/images/user/user.png'; // Đường dẫn ảnh cho User
   @Input() botchatbackgroundcolor = 'rgb(247, 248, 255)'; // Màu background của Bot
   @Input() userchatbackgroundcolor = 'rgb(63, 81, 181)'; // Màu background của user
   @Input() botchattextcolor = 'rgb(48, 50, 53)'; // Màu text của Bot
   @Input() userchattextcolor = 'rgb(255, 255, 255)'; // Màu text của user
-  @Input() questionsuggests = 'hello - how can you help me';
+  @Input() questionsuggests = 'hello | how can you help me';
   @Input() botgreeting = 'Hello! How can Aratech help you?'; // Lời chào của Bot
   @Input() placeholderinput = 'Type your question'; // placeholder của phần searchInput
   @Input() heightframe = '550px'; // Chiều cao khung chat(Tính theo px hoặc %)
@@ -77,8 +76,10 @@ export class StreamingChatComponent implements OnInit, OnChanges {
   @Input() chatimageurl = 'assets/images/logo/aratech-logo-picture.png'; //Đường dẫn ảnh Chat
   @Input() chatpowerby = 'Aratech VN'; //Được xây dựng bởi
   @Input() originurlconfig = 'https://flow.ai.aratech.vn'; //Cấu hình origin request url
-  @Input() sessionid = 'd5be43de-921c-4f65-8845-175af3cb82d3'; //Cấu hình sessionid request url
+  // @Input() sessionid = 'd5be43de-921c-4f65-8845-175af3cb82d3'; //Cấu hình sessionid request url phiên bản 1.5
+  @Input() sessionid = '98283c23-4dfa-4383-950e-b825c3fb164c'; //Cấu hình sessionid request url phiên bản 2.0
   @Input() xapikeyconfig = 'sk-lrw7K_D340w_fPItbtSPitqDgrLWcKHHciLlzFx2JR0'; //Cấu hình xapikey request url
+  @Input() speed = '1'; //Cấu hình tốc độ render chữ
   showChatFrame = false; //hiển thị | ẩn khung chat
   chats: any[] = []; // danh sách đoạn chat
   requestString = ''; //câu hỏi
@@ -112,22 +113,22 @@ export class StreamingChatComponent implements OnInit, OnChanges {
   ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
-    // if (changes?.['ishiddenbutton']) {
-    //   const currentIsHiddentButton = changes?.['ishiddenbutton'].currentValue;
-    //   this.ishiddenbutton = currentIsHiddentButton === 'true' ? true : false;
-    // }
-    // if (changes?.['showchatfirst']) {
-    //   const currentshowChatFirst = changes?.['showchatfirst'].currentValue;
-    //   this.showchatfirst = currentshowChatFirst === 'true' ? true : false;
-    // }
-    // if (changes?.['isstream']) {
-    //   const currentIsStream = changes?.['isstream'].currentValue;
-    //   this.isstream = currentIsStream === 'true' ? true : false;
-    // }
-    // if (changes?.['isenablehistory']) {
-    //   const currentIsEnableHistory = changes?.['isenablehistory'].currentValue;
-    //   this.isenablehistory = currentIsEnableHistory === 'true' ? true : false;
-    // }
+    if (changes?.['ishiddenbutton']) {
+      const currentIsHiddentButton = changes?.['ishiddenbutton'].currentValue;
+      this.ishiddenbutton = currentIsHiddentButton === 'true' ? true : false;
+    }
+    if (changes?.['showchatfirst']) {
+      const currentshowChatFirst = changes?.['showchatfirst'].currentValue;
+      this.showchatfirst = currentshowChatFirst === 'true' ? true : false;
+    }
+    if (changes?.['isstream']) {
+      const currentIsStream = changes?.['isstream'].currentValue;
+      this.isstream = currentIsStream === 'true' ? true : false;
+    }
+    if (changes?.['isenablehistory']) {
+      const currentIsEnableHistory = changes?.['isenablehistory'].currentValue;
+      this.isenablehistory = currentIsEnableHistory === 'true' ? true : false;
+    }
     if (changes?.['xposition']) {
       this.xPositionButtonValue = Number(changes?.['xposition'].currentValue);
       this.xPositionFrameValue = this.xPositionButtonValue + 5;
@@ -155,7 +156,7 @@ export class StreamingChatComponent implements OnInit, OnChanges {
           this.yPositionKey = 'bottom';
       }
     }
-    this.suggests = this.questionsuggests.split("-")
+    this.suggests = this.questionsuggests.split('|').map((item) => item.trim());
   }
 
   ngOnInit(): void {
@@ -225,6 +226,7 @@ export class StreamingChatComponent implements OnInit, OnChanges {
   }
 
   hanldeSend() {
+    this.isShowSuggest = false;
     if (this.isDisableSend) {
       if (this.subscription) {
         this.subscription.unsubscribe();
@@ -346,7 +348,8 @@ export class StreamingChatComponent implements OnInit, OnChanges {
         )
         .subscribe(
           (rs: any) => {
-            this.answers.push(rs.outputs[0].outputs[0].messages[0].message);
+            // this.answers.push(rs.outputs[0].outputs[0].messages[0].message);
+            this.answers.push(rs.outputs[0].outputs[0].results.message.text);
             this.typeEffect();
           },
           (error) => {
@@ -363,7 +366,42 @@ export class StreamingChatComponent implements OnInit, OnChanges {
     }
   }
 
+  // typeEffect() {
+  //   const speedRender = Number(this.speed)
+  //   this.isRenderResponse = false;
+  //   if (this.answers.length === 0) {
+  //     return;
+  //   }
+  //   let index = 0;
+  //   const typing = () => {
+  //     if (this.isStopRequest) {
+  //       this.isDisableSend = false;
+  //       this.isStopRequest = false;
+  //       this.saveCurrentChat();
+  //       return;
+  //     }
+  //     if (this.answers.length > 0 && index < this.answers[0].length) {
+  //       this.currentResponseChat += this.answers[0][index];
+  //       index++;
+  //       setTimeout(() => this.scrollToBottom(), 0);
+  //       requestAnimationFrame(typing);
+  //     } else {
+  //       this.answers.shift();
+  //       index = 0;
+  //       if (this.answers.length === 0) {
+  //         this.saveCurrentChat();
+  //       } else {
+  //         setTimeout(() => this.scrollToBottom(), 0);
+  //         requestAnimationFrame(typing);
+  //       }
+  //     }
+  //   };
+
+  //   requestAnimationFrame(typing);
+  // }
+
   typeEffect() {
+    const speedRender = Number(this.speed);
     this.isRenderResponse = false;
     if (this.answers.length === 0) {
       return;
@@ -376,9 +414,27 @@ export class StreamingChatComponent implements OnInit, OnChanges {
         this.saveCurrentChat();
         return;
       }
-      if (this.answers.length > 0 && index < this.answers[0].length) {
-        this.currentResponseChat += this.answers[0][index];
-        index++;
+      if (
+        this.answers.length > 0 &&
+        index + speedRender < this.answers[0].length
+      ) {
+        this.currentResponseChat += this.answers[0].substring(
+          index,
+          index + speedRender
+        );
+        index = index + speedRender;
+        setTimeout(() => this.scrollToBottom(), 0);
+        requestAnimationFrame(typing);
+      } else if (
+        this.answers.length > 0 &&
+        index < this.answers[0].length &&
+        index + speedRender>= this.answers[0].length
+      ) {
+        this.currentResponseChat += this.answers[0].substring(
+          index,
+          this.answers[0].length
+        );
+        index = this.answers[0].length;
         setTimeout(() => this.scrollToBottom(), 0);
         requestAnimationFrame(typing);
       } else {
@@ -439,5 +495,12 @@ export class StreamingChatComponent implements OnInit, OnChanges {
     if (!this.isAutoScroll) return;
     const crollHeight = this.chatMessages.nativeElement.scrollHeight;
     this.chatMessages.nativeElement.scrollTop = crollHeight;
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  onKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape' && this.showChatFrame) {
+      this.showChatFrame = false;
+    }
   }
 }

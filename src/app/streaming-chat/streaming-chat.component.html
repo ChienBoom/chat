@@ -79,9 +79,14 @@
       </div>
     </div>
     <div class="flex flex-col w-full h-full justify-start z-0">
-      <div
+      <!-- <div
         class="flex flex-col flex-grow min-w-full w-full px-3 pt-[70px] relative scrollable-container chatbot-chat-view scroll-smooth"
         [ngClass]="{ 'overflow-y-scroll': !isShowSuggest }"
+        (scroll)="handleScroll($event)"
+        #chatMessages
+      > -->
+      <div
+        class="overflow-y-auto flex flex-col flex-grow min-w-full w-full px-3 pt-[70px] relative scrollable-container chatbot-chat-view scroll-smooth"
         (scroll)="handleScroll($event)"
         #chatMessages
       >
@@ -101,7 +106,7 @@
             </figure>
             <div class="flex flex-col justify-start">
               <span
-                class="px-4 py-2 ml-2 max-w-full chatbot-host-bubble prose"
+                class="px-4 py-2 ml-2 max-w-full chatbot-host-bubble"
                 [ngStyle]="{
                   background: botchatbackgroundcolor,
                   color: botchattextcolor
@@ -202,18 +207,32 @@
           </div>
         </div>
       </div>
-      <div class="w-full flex flex-col px-5 pt-1" *ngIf="isShowSuggest">
+      <div
+        class="w-full flex flex-col justify-end px-5 pt-1"
+        style="border-width: thin;"
+        *ngIf="isShowSuggest"
+      >
         <span
           *ngFor="let suggest of suggests"
-          class="px-4 py-2 ml-2 mb-2 w-fit break-words chatbot-host-bubble prose"
+          class="flex items-center px-4 py-2 ml-auto mb-2 break-words chatbot-host-bubble prose"
           [ngStyle]="{
-            background: botchatbackgroundcolor,
-            color: botchattextcolor
+            background: userchatbackgroundcolor,
+            color: userchattextcolor
           }"
-          style="border-radius: 20px; font-size: 16px"
+          style="border-radius: 20px; font-size: 16px; width: fit-content; display: flex; flex-wrap: wrap; align-items: center; cursor: pointer;"
           (click)="handleClickSuggest(suggest)"
         >
-          {{ suggest }}
+          <span style="white-space: normal; word-wrap: break-word; flex: 1">
+            {{ suggest }}
+          </span>
+          <mat-icon
+            class="ml-2"
+            [ngStyle]="{
+              color: 'white'
+            }"
+          >
+            send
+          </mat-icon>
         </span>
       </div>
       <div class="w-full px-5 pt-2 pb-1">
@@ -234,10 +253,18 @@
               style="background: transparent; border: none"
               (click)="hanldeSend()"
             >
-              <mat-icon class="text-indigo-500" *ngIf="!isDisableSend"
+              <mat-icon
+                [ngStyle]="{
+                  color: chatcolor
+                }"
+                *ngIf="!isDisableSend"
                 >send</mat-icon
               >
-              <mat-icon class="text-indigo-500" *ngIf="isDisableSend"
+              <mat-icon
+                [ngStyle]="{
+                  color: chatcolor
+                }"
+                *ngIf="isDisableSend"
                 >album</mat-icon
               >
             </button>
