@@ -31,15 +31,15 @@ import { createCustomElement } from '@angular/elements';
     HttpClientModule,
     MatIconModule,
   ],
-  providers: [],
-  bootstrap: [AppComponent],
+  // providers: [],
+  // bootstrap: [AppComponent],
 })
 export class AppModule {
-  // constructor(private injector: Injector) {
-  //   const streamingChat = createCustomElement(StreamingChatComponent, {
-  //     injector,
-  //   });
-  //   customElements.define('streaming-chat', streamingChat);
-  // }
-  // ngDoBootstrap() {} // Không sử dụng bootstrap component
+  constructor(private injector: Injector) {
+    const streamingChat = createCustomElement(StreamingChatComponent, {
+      injector,
+    });
+    customElements.define('streaming-chat', streamingChat);
+  }
+  ngDoBootstrap() {} // Không sử dụng bootstrap component
 }

@@ -12,7 +12,7 @@
     >expand_more</mat-icon
   >
   <img
-    class="text-white transition-opacity duration-200 rounded-full object-cover w-full h-full"
+    class="text-white transition-opacity duration-200 rounded-full object-cover w-full h-full img-btn-chat"
     [class.opacity-0]="showChatFrame"
     [class.opacity-100]="!showChatFrame"
     *ngIf="!showChatFrame"
@@ -209,7 +209,7 @@
       </div>
       <div
         class="w-full flex flex-col justify-end px-5 pt-1"
-        style="border-width: thin;"
+        style="border-top-width: thin"
         *ngIf="isShowSuggest"
       >
         <span
@@ -219,7 +219,15 @@
             background: userchatbackgroundcolor,
             color: userchattextcolor
           }"
-          style="border-radius: 20px; font-size: 16px; width: fit-content; display: flex; flex-wrap: wrap; align-items: center; cursor: pointer;"
+          style="
+            border-radius: 20px;
+            font-size: 16px;
+            width: fit-content;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            cursor: pointer;
+          "
           (click)="handleClickSuggest(suggest)"
         >
           <span style="white-space: normal; word-wrap: break-word; flex: 1">
@@ -241,6 +249,7 @@
         >
           <div class="w-full flex items-end justify-between">
             <textarea
+              [disabled]="isDisableInput && !isenableinputfirst"
               id="chat-input"
               class="focus:outline-none bg-transparent px-4 py-4 flex-1 w-full h-full min-h-[56px] max-h-32 text-input disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-100"
               style="font-size: 16px; resize: none; height: 56px !important"
@@ -252,6 +261,7 @@
               class="py-2 px-4 justify-center font-semibold text-white focus:outline-none flex items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:brightness-100 transition-all filter hover:brightness-90 active:brightness-75 chatbot-button m-0 h-14 flex items-center justify-center"
               style="background: transparent; border: none"
               (click)="hanldeSend()"
+              [disabled]="isDisableInput && !isenableinputfirst"
             >
               <mat-icon
                 [ngStyle]="{

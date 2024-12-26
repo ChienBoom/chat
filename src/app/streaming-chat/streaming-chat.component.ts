@@ -7,6 +7,7 @@ import {
 } from '@angular/animations';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import {
+  AfterViewInit,
   Component,
   ElementRef,
   HostListener,
@@ -49,11 +50,14 @@ import { StreamingChatService } from '../services/streaming-chat.service';
     ]),
   ],
 })
-export class StreamingChatComponent implements OnInit, OnChanges {
+export class StreamingChatComponent
+  implements OnInit, OnChanges, AfterViewInit
+{
   @Input() ishiddenbutton: boolean = false; //Ẩn button chat
   @Input() showchatfirst: boolean = false; //Mở chat khi khởi động ứng dụng
-  @Input() isstream: boolean = true; //Sử dụng chế độ stream trong request
+  @Input() isstream: boolean = false; //Sử dụng chế độ stream trong request
   @Input() isenablehistory: boolean = true; //Sử dụng lịch sử chat
+  @Input() isenableinputfirst: boolean = false; //Sử dụng nhiều agent
   @Input() chattitle = 'Aratech AI'; //Tiêu đề khung chat
   @Input() chatcolor = 'rgb(63, 81, 181)'; // Màu cho khung chat
   @Input() texttitlecolor = 'white'; // Màu cho title khung chat
@@ -71,13 +75,14 @@ export class StreamingChatComponent implements OnInit, OnChanges {
   @Input() position = 'br'; // vị trí button (tl: top-left | tr: top-right | bl: bottom-left | br: bottom-right)
   @Input() xposition = '20'; // giá trị vị trí so với trục x
   @Input() yposition = '14'; //giá trị vị trí so với trục y
+  @Input() buttonbackgroundcolor = 'rgb(63, 81, 181)'; // Màu cho button
   @Input() buttonimageurl = 'assets/images/logo/aratech-logo-picture.png'; // Đường dẫn icon của button
   @Input() borderradius = '6px'; // bo viền cho khung chat
   @Input() chatimageurl = 'assets/images/logo/aratech-logo-picture.png'; //Đường dẫn ảnh Chat
   @Input() chatpowerby = 'Aratech VN'; //Được xây dựng bởi
   @Input() originurlconfig = 'https://flow.ai.aratech.vn'; //Cấu hình origin request url
-  // @Input() sessionid = 'd5be43de-921c-4f65-8845-175af3cb82d3'; //Cấu hình sessionid request url phiên bản 1.5
-  @Input() sessionid = '98283c23-4dfa-4383-950e-b825c3fb164c'; //Cấu hình sessionid request url phiên bản 2.0
+  // @Input() flowid = 'd5be43de-921c-4f65-8845-175af3cb82d3'; //Cấu hình flowid request url phiên bản 1.5
+  @Input() flowid = '98283c23-4dfa-4383-950e-b825c3fb164c'; //Cấu hình flowid request url phiên bản 2.0
   @Input() xapikeyconfig = 'sk-lrw7K_D340w_fPItbtSPitqDgrLWcKHHciLlzFx2JR0'; //Cấu hình xapikey request url
   @Input() speed = '1'; //Cấu hình tốc độ render chữ
   showChatFrame = false; //hiển thị | ẩn khung chat
@@ -90,6 +95,7 @@ export class StreamingChatComponent implements OnInit, OnChanges {
   isDisableSend = false; // disable button send
   isStopRequest = false; // dừng gửi request
   isCompleteRequest = true; // hoàn thành request
+  isDisableInput = true; // disable input
   isShowSuggest = true;
   requestOrigin = 'https://langflow.hientd.vn';
   midurl = '/api/v1/run/';
@@ -101,6 +107,7 @@ export class StreamingChatComponent implements OnInit, OnChanges {
   xPositionFrameValue = 25;
   yPositionFrameValue = 79;
   suggests: string[] = [];
+  currentSessionId = 'currentSessionId';
 
   private subscription: Subscription | undefined;
   private subscriptionStream: Subscription | undefined;
@@ -128,6 +135,10 @@ export class StreamingChatComponent implements OnInit, OnChanges {
     if (changes?.['isenablehistory']) {
       const currentIsEnableHistory = changes?.['isenablehistory'].currentValue;
       this.isenablehistory = currentIsEnableHistory === 'true' ? true : false;
+    }
+    if (changes?.['isenableinputfirst']) {
+      const currentMuliAgent = changes?.['isenableinputfirst'].currentValue;
+      this.isenableinputfirst = currentMuliAgent === 'true' ? true : false;
     }
     if (changes?.['xposition']) {
       this.xPositionButtonValue = Number(changes?.['xposition'].currentValue);
@@ -161,20 +172,37 @@ export class StreamingChatComponent implements OnInit, OnChanges {
 
   ngOnInit(): void {
     if (this.isenablehistory) {
-      this.chats = localStorage.getItem('ChatHistory')
+      const totalChat = localStorage.getItem('ChatHistory')
         ? JSON.parse(localStorage.getItem('ChatHistory')!)
         : [];
+      if (totalChat.length == 0) this.chats = [];
+      else {
+        const chat = totalChat.find((item: any) => item.flowid === this.flowid);
+        this.chats = chat ? chat.data : [];
+      }
     }
     this.requestOrigin = this.originurlconfig;
     this.showChatFrame = this.showchatfirst;
     if (this.chats.length > 0) {
       this.isShowSuggest = false;
+      this.isDisableInput = false;
     }
+    if (localStorage.getItem('currentSessionId')) {
+      this.currentSessionId = localStorage.getItem('currentSessionId')!;
+    } else {
+      this.currentSessionId = this.generateGUID();
+      localStorage.setItem('currentSessionId', this.currentSessionId);
+    }
+  }
+
+  ngAfterViewInit() {
+    setTimeout(() => document.getElementById('chat-input')!.focus(), 0);
+    setTimeout(() => this.scrollToBottom(), 0);
   }
 
   get buttonStyles() {
     return {
-      background: this.chatcolor,
+      background: this.buttonbackgroundcolor,
       [this.xPositionKey]: `${this.xPositionButtonValue}px`,
       [this.yPositionKey]: `${this.yPositionButtonValue}px`,
     };
@@ -203,12 +231,34 @@ export class StreamingChatComponent implements OnInit, OnChanges {
       if (this.subscriptionStream) this.subscriptionStream.unsubscribe();
     }
     this.chats = [];
-    if (this.isenablehistory) localStorage.removeItem('ChatHistory');
+
+    if (this.isenablehistory) {
+      let totalChat = localStorage.getItem('ChatHistory')
+        ? JSON.parse(localStorage.getItem('ChatHistory')!)
+        : [];
+      totalChat = totalChat.filter((item: any) => item.flowid !== this.flowid);
+      localStorage.setItem('ChatHistory', JSON.stringify(totalChat));
+    }
+    this.currentSessionId = this.generateGUID();
+    localStorage.setItem('currentSessionId', this.currentSessionId);
     this.isShowSuggest = true;
+    this.isDisableInput = true;
+  }
+
+  generateGUID(): string {
+    return (
+      'cb_' +
+      'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+        const r = (Math.random() * 16) | 0;
+        const v = c === 'x' ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      })
+    );
   }
 
   handleClickSuggest(suggest: string) {
     this.isShowSuggest = false;
+    this.isDisableInput = false;
     this.isStopRequest = false;
     this.isRenderResponse = true;
     this.isDisableSend = true;
@@ -227,6 +277,7 @@ export class StreamingChatComponent implements OnInit, OnChanges {
 
   hanldeSend() {
     this.isShowSuggest = false;
+    this.isDisableInput = false;
     if (this.isDisableSend) {
       if (this.subscription) {
         this.subscription.unsubscribe();
@@ -242,7 +293,10 @@ export class StreamingChatComponent implements OnInit, OnChanges {
       }
       this.isDisableSend = false;
       this.isStopRequest = true;
-      if (this.chats.length == 0) this.isShowSuggest = true;
+      if (this.chats.length == 0) {
+        this.isShowSuggest = true;
+        this.isDisableInput = true;
+      }
       return;
     }
     this.isStopRequest = false;
@@ -269,11 +323,12 @@ export class StreamingChatComponent implements OnInit, OnChanges {
       });
       this.subscription = this.http
         .post(
-          `${this.originurlconfig}${this.midurl}${this.sessionid}?stream=${this.isstream}`,
+          `${this.originurlconfig}${this.midurl}${this.flowid}?stream=${this.isstream}`,
           {
             input_value: question,
             output_type: 'chat',
             input_type: 'chat',
+            session_id: this.currentSessionId,
             tweaks: this.tweaks,
           },
           { headers: headers }
@@ -337,11 +392,12 @@ export class StreamingChatComponent implements OnInit, OnChanges {
       });
       this.subscription = this.http
         .post(
-          `${this.originurlconfig}${this.midurl}${this.sessionid}?stream=${this.isstream}`,
+          `${this.originurlconfig}${this.midurl}${this.flowid}?stream=${this.isstream}`,
           {
             input_value: question,
             output_type: 'chat',
             input_type: 'chat',
+            session_id: this.currentSessionId,
             tweaks: this.tweaks,
           },
           { headers: headers }
@@ -364,41 +420,10 @@ export class StreamingChatComponent implements OnInit, OnChanges {
           }
         );
     }
+
+    setTimeout(() => document.getElementById('chat-input')!.focus(), 0);
+    setTimeout(() => this.scrollToBottom(), 0);
   }
-
-  // typeEffect() {
-  //   const speedRender = Number(this.speed)
-  //   this.isRenderResponse = false;
-  //   if (this.answers.length === 0) {
-  //     return;
-  //   }
-  //   let index = 0;
-  //   const typing = () => {
-  //     if (this.isStopRequest) {
-  //       this.isDisableSend = false;
-  //       this.isStopRequest = false;
-  //       this.saveCurrentChat();
-  //       return;
-  //     }
-  //     if (this.answers.length > 0 && index < this.answers[0].length) {
-  //       this.currentResponseChat += this.answers[0][index];
-  //       index++;
-  //       setTimeout(() => this.scrollToBottom(), 0);
-  //       requestAnimationFrame(typing);
-  //     } else {
-  //       this.answers.shift();
-  //       index = 0;
-  //       if (this.answers.length === 0) {
-  //         this.saveCurrentChat();
-  //       } else {
-  //         setTimeout(() => this.scrollToBottom(), 0);
-  //         requestAnimationFrame(typing);
-  //       }
-  //     }
-  //   };
-
-  //   requestAnimationFrame(typing);
-  // }
 
   typeEffect() {
     const speedRender = Number(this.speed);
@@ -428,7 +453,7 @@ export class StreamingChatComponent implements OnInit, OnChanges {
       } else if (
         this.answers.length > 0 &&
         index < this.answers[0].length &&
-        index + speedRender>= this.answers[0].length
+        index + speedRender >= this.answers[0].length
       ) {
         this.currentResponseChat += this.answers[0].substring(
           index,
@@ -462,7 +487,18 @@ export class StreamingChatComponent implements OnInit, OnChanges {
       responseLoading: false,
     });
     if (this.isenablehistory) {
-      localStorage.setItem('ChatHistory', JSON.stringify(this.chats));
+      let totalChat = localStorage.getItem('ChatHistory')
+        ? JSON.parse(localStorage.getItem('ChatHistory')!)
+        : [];
+      if (totalChat.length == 0)
+        totalChat = [{ flowid: this.flowid, data: this.chats }];
+      else {
+        totalChat = totalChat.filter(
+          (item: any) => item.flowid !== this.flowid
+        );
+        totalChat.push({ flowid: this.flowid, data: this.chats });
+      }
+      localStorage.setItem('ChatHistory', JSON.stringify(totalChat));
     }
     this.currentResponseChat = '';
     this.isDisableSend = false;
